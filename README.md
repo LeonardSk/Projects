@@ -1,2 +1,2 @@
-# Projects
-My Data Science Portfolio
+# Data Science Projects and Portfolio
+
