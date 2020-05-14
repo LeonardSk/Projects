@@ -2,7 +2,7 @@
 title: "US Building Permit data - EDA"
 author: "Leonard Seok"
 date: "4 May 2020"
-output: html_document
+output: html_document: keep_md: true
 ---
 
 ```{r setup}
