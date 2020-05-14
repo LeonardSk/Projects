@@ -1,3 +1,3 @@
 # Data Science Projects and Portfolio
 
-Click <a href="BuildingPermits_EDA.html">here</a> to go to Markdown.
+Click <a href="https://leonardsk.github.io/ProjectsBuildingPermits_EDA.html">here</a> to go to Markdown.
