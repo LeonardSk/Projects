@@ -1,0 +1,287 @@
+---
+title: "Building Permit data - EDA"
+author: "Leonard Seok"
+date: "4 May 2020"
+output: html_document
+---
+
+```{r setup}
+# setwd("C:\\Users\\Leonard\\Desktop\\Datascience for R\\Projects\\EDA_1")
+library(tidyverse); library(gridExtra); library(ggplot2); library(reshape); library(caret)
+```
+
+## Import the data
+
+Source : https://www.recenter.tamu.edu/data/building-permits/
+
+This site contains Building permit data for single-family, 2-4 family and 5-plus family units for states, metropolitan statistical areas (MSAs) and Texas counties.
+
+This objective of this project is to Explore and visualise the data, while trying to form meaningful observations through some rather basic seasonality modelling in an attempt to detrend the data.
+
+We start off by reading in the data.
+
+```{r}
+perm <- read.csv("dataPermit_full.csv")
+```
+
+We can see that NAs are read in as nulls.
+We can also see that some fields are read in as factors where they really should be numerics (due to the "null" being NAs)
+
+```{r}
+anyNA(perm)
+summary(perm$f1change)
+str(perm)
+```
+
+Fix the problematic nulls issue with an additional paramater na = "null"
+
+```{r}
+perm <- read.csv("dataPermit_full.csv", na = "null")
+str(perm)
+```
+
+* Area = Metropolitan Standard Area
+* Date = Month/Year (Factor)
+* f1 = Single Family House
+* f24 = 2 - 4 Families House
+* f5 = 5+ Families House
+* units = Count of buildings
+* value = Average Building value
+
+Lets Check how far back this data goes.
+```{r}
+perm.1 <- perm %>% 
+  mutate(year = as.numeric(str_sub(date,-4,-1))
+         , month = as.numeric(str_sub(date,1,2))
+         , yyyymm = year * 100 + month
+         , yyyymm_G = year + (month-1)/12
+         )
+
+(year.dist <- ggplot(perm.1, aes(year)) +
+  geom_histogram(binwidth = 1, color = 'black', fill = 'cyan') +
+    ggtitle("Data points Count by Year")
+)
+```
+
+We can notice more consistency in volumes in the past 10 years, so lets cut the data.
+
+```{r}
+perm.2 <- perm.1 %>% 
+  filter(year >= 2000)
+```
+
+## General EDA
+
+Counts by Year
+
+```{r}
+perm.2 %>% count(year) %>% arrange(desc(year))
+
+ggplot(perm.2, aes(year)) +
+  geom_histogram(binwidth = 1, color='black', fill='cyan')
+```
+
+Counts by Area
+
+```{r}
+perm.2 %>% count(area) 
+```
+
+Alot of areas seem to have the same counts, lets check with a double count
+
+```{r}
+perm.2 %>% count(area) %>% count(n)
+```
+We can see that most areas have 243 records.
+
+Now lets look at yearly figures across the different building profiles
+```{r}
+counts.by.year <- perm.2 %>% group_by(year) %>% 
+  summarise(f1.units = sum(f1units)
+            , f24.units = sum(f24units)
+            , f5.units = sum(f5units)) %>% 
+  gather(key = "unit.type", value = "Counts", -year) %>% 
+  ggplot(aes(x=year, y=Counts, fill = unit.type)) +
+  geom_bar(aes(group = unit.type), color = 'black', stat = "Identity", position = "dodge") +
+  theme_bw() +
+  ggtitle("Counts by Building Unit Type Across Years")
+
+Amounts.by.year <- perm.2 %>% 
+  group_by(year) %>% 
+  summarise(f1.value = sum(as.numeric(f1value)*as.numeric(f1units))/sum(as.numeric(f1units)) # as.numerics is required as INT types can overflow if too large
+            , f24.value = sum(as.numeric(f24value)*as.numeric(f24units))/sum(as.numeric(f24units))
+            , f5.value = sum(as.numeric(f5value)*as.numeric(f5units))/sum(as.numeric(f5units)) ) %>% 
+  gather(key = "unit.type", value = "Amounts", -year) %>% 
+  ggplot(aes(x=year, y=Amounts, color = unit.type)) +
+  geom_line(aes(group = unit.type)) +
+  theme_bw() +
+  ggtitle("Weighted Average $ Amount by Building Unit Type Across Years")
+
+grid.arrange(counts.by.year, Amounts.by.year, nrow =2)
+```
+
+
+## Single Family Building Units
+
+Plot the number of single family units over time overall. We can see a noticable decrease starting 2007, which is when the GFC begun.
+```{r}
+perm.2 %>% group_by(yyyymm_G) %>% 
+  summarise(f1_tot = sum(f1units)) %>% 
+  ggplot(aes(x=yyyymm_G,y=f1_tot)) +
+  geom_line() +
+  ggtitle("Number of F1 units Overall") + theme_bw()
+```
+
+The effects of 2007 - 2009 GFC can be clearly seen here with the dips in that period.
+
+Plot the number of single family units over time, this time by Area
+```{r}
+ggplot(perm.2, aes(x=yyyymm_G, y=f1units)) + 
+  geom_line(aes(group=area)) +
+  ggtitle("Number of F1 Units by Area") +
+  xlab("Period") +
+  theme_bw()
+```
+
+This looks bit messy... so lets focus on the areas with larger volumes of data.
+
+```{r}
+# Lets take the top 25% areas by average monthly units 
+length(unique(perm.2$area)) # we have 381 cities in total
+top.25 <- round(length(unique(perm.2$area)) * 0.25)
+
+f1.by.area <- perm.2 %>% 
+  group_by(area) %>% 
+  summarise(average.unit.count = mean(f1units)) %>% 
+  arrange(desc(average.unit.count)) %>% 
+  head(top.25)
+
+perm.large <- perm.2 %>% filter(area %in% f1.by.area$area)
+
+ggplot(perm.large, aes(x=yyyymm_G, y=f1units)) + geom_line(aes(group = area)) + 
+  scale_y_log10() + # a log transform can help when there is large scale discrepancies within the data
+  geom_smooth() +
+  ggtitle("F1 Units by all Areas") +
+  xlab("Period")
+
+```
+
+With the Log scale, we can see some seasonal patterns within a year here, and also a long term increasing trend post the GFC period.
+
+## Model to partition the seasonality pattern
+
+Lets pick an area to build a model on - say we pick the one with largest average unit counts
+
+```{r}
+area.name <- f1.by.area %>% filter(average.unit.count == max(average.unit.count)) %>% select(area)
+
+area.1 <- perm.2 %>% filter(area == area.name$area) 
+
+ggplot(area.1, aes(x=yyyymm_G, y = f1units)) + geom_line() + ggtitle("F1 Units for the Area with Largest Average Units (Houston)")
+
+# Highlight the 2019 and 2020 years in red (the later years)
+ggplot(area.1, aes(x=factor(month), y = f1units)) + geom_line(aes(group = year, color = year)) + scale_color_gradient(low = "#56B1F7", high = "#132B43") +
+  geom_line(data = area.1 %>% filter(year == 2020), color = 'red') +
+  geom_line(data = area.1 %>% filter(year == 2019), color = 'red', linetype = 'longdash') +
+  scale_y_log10() +
+  ggtitle("Seasonality within a year (F1 in Houstons)") +
+  xlab("Month") +
+  theme_bw()
+```
+
+We can see some trends here - some points to note:
+
+* Building permits activities start falling in Aug/Sep, and hits lowest in December. This could be due to the colder weather in these periods that cause a lower demands in general?  
+* Permit activities peak around May/June - which is when its getting warm/hot
+* Is this trend the same for all areas other than Houston?
+* Is this trend same across all building unit types?
+
+## Seasonality model for Houston (for years 2010 onwards)
+
+Lets build a simple linear model to quantify this signal just for Houston. Lets work on data 2010 onwards, since including GFC periods would simply cause more noise in our predictions.
+
+```{r}
+area.2 <- area.1 %>% filter(year>=2010)
+
+set.seed(13)
+sig.mod.hous <- train(log(f1units) ~ factor(month), data = area.2, method = "lm")
+
+area.2$f1unit.pred <- predict(sig.mod.hous, newdata = area.2)
+
+area.2 %>% mutate(log.f1units = log(f1units)) %>% 
+  select(yyyymm_G, log.f1units, f1unit.pred) %>% 
+  gather(key = 'type', value = 'value', -yyyymm_G) %>% 
+  ggplot(aes(x=yyyymm_G, y=value, color = type, linetype = type)) +
+  geom_line(aes(group = type)) +
+  scale_linetype_manual(labels = c("Pred", "Actual") ,values=c("longdash","solid")) +
+  scale_color_manual(labels = c("Pred", "Actual") ,values = c("red", "black")) +
+  ggtitle('Prediction VS Actual - Houston post 2010') + theme_bw()
+```
+
+We can again see the strong monthly pattern since what we predict in our model is close to actuals.
+
+Lets have a look at the residual plot. We would like to know what is the underlying trend IF we were to ignore the monthly pattern (basically the remaining signal that is not captured by the model.)
+
+```{r}
+area.2 %>% mutate(log.f1units = log(f1units)) %>% 
+  select(yyyymm_G, log.f1units, f1unit.pred) %>% 
+  mutate(residuals = log.f1units - f1unit.pred) %>% 
+  ggplot(aes(x=yyyymm_G, y=residuals)) +
+  geom_line() +
+  ggtitle('Residual Plot for F1 units Houston')
+```
+
+Stripping out the monthly pattern, we can see the longer term trends more clearly.
+
+## Seasonality Model for all large areas (for years 2010 onwards)
+
+```{r}
+# We split the dataset into individual datasets by area
+nested.area <- perm.large %>% filter(year >= 2010) %>% group_by(area) %>% nest()
+
+# Create a function for the model, this is so we can apply it to the nested datasets for each area
+area.model <- function(df, res, pred){
+  f <- as.formula(paste(res, paste(pred, collapse = '+'), sep = '~'))
+  return(lm(f, data = df))
+}
+
+# For example , we run the model on just the Houston Area
+model.Hous <- area.model(area.2, res="log(f1units+1)", pred="factor(month)")
+
+# Now lets apply it to the whole nested sets using map - we can see more examples of nested models here https://drsimonj.svbtle.com/running-a-model-on-separate-groups
+area.model.all <- nested.area %>% 
+  mutate(
+          # First step is to map the model to each nested set
+          model = map(.x=data, .f=~area.model(df=.x,res="log(f1units+1)", pred="factor(month)"))
+          # then we can manually obtain the predicted and the residuals
+         , preds = map2(.x=model, .y=data, .f=~predict(.x, .y))
+         , resi = map2(.x=data, .y=preds, .f=~log(.x$f1units) - .y)
+         # another way of getting the predicted and residuals using what is stored in the model class
+         , preds.check = map(.x=model, .f="fitted.values")
+         , resi.check = map(.x=model, .f="residuals")
+        )
+
+perm.large.res <- area.model.all %>% unnest(data, preds,resi, preds.check, resi.check) 
+
+# lets check the plots for Houston with the individual Houston model what we have above
+perm.large.res %>% filter(grepl("Houston",area)) %>% 
+  mutate(log.f1units = log(f1units)) %>% 
+  select(yyyymm_G, log.f1units, preds) %>% 
+  gather(key='type', value='value', -yyyymm_G) %>% 
+  ggplot(aes(x=yyyymm_G, y=value, color=type)) +
+  geom_line() +
+  scale_color_manual(values = c("black", "red"))
+# This checks out to be the same as the above chart
+```
+
+Now lets plot the residuals for all the top 25% largest areas. By detrending the data, we can observe the long term trend for the top 25% largest areas for f1units.
+
+```{r}
+perm.large.res %>% ggplot(aes(x=yyyymm_G, y=resi)) +
+  geom_line(aes(group=area), alpha=1/10) +
+  geom_smooth(se=F) +
+  ggtitle("Detrended curve for top 25% of areas (f1units)") +
+  ylab("Residuals") +theme_bw()
+```
+
+
