@@ -1,8 +1,11 @@
 ---
 title: "Building Permit data - EDA"
 author: "Leonard Seok"
-date: "4 May 2020"
-output: html_document
+date: "last update: `r format(Sys.Date(), format = '%d %B %Y')`"
+output: 
+  html_document:
+    theme: journal
+    highlight: tango
 ---
 
 ```{r setup}
