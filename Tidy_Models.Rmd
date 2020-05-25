@@ -1,0 +1,65 @@
+---
+title: "TidyModels Playaround"
+author: "Leonard Seok"
+date: "24 May 2020"
+output: 
+  html_document:
+    theme: journal
+    hightlight: tango
+---
+
+Lets load the PimaIndiansDiabetes dataset for this play-around
+
+```{r setup, results = 'hide'}
+# A custom function to install and load packages
+install.custom <- function(package.name) {
+  if (!(package.name %in% rownames(installed.packages()))) {
+    install.packages(package.name)
+  } else {
+    print(paste0(package.name," ","is already installed"))
+  }
+  library(package.name, character.only = T)
+}
+
+install.custom("purrr")
+list_package <- list("mlbench", "dplyr", "tidyverse", "ggplot2")
+map(list_package, ~install.custom(.x))
+
+data("PimaIndiansDiabetes") # Load the data 
+
+data <- PimaIndiansDiabetes
+```
+
+Investigate the Numeric data with some histograms
+
+```{r}
+data %>% dplyr::select_if(is.numeric) %>% 
+  gather(key='field', value='value') %>%
+  ggplot(aes(x=value)) + geom_histogram(color='black') +
+  facet_wrap(~field, scales = 'free')
+```
+
+We can see that for some fields such as insulin, pregnant, and pressure has a large concentration of 0. 
+It doesn't quite makes sense that mass and tricep skin fold are recorded as 0, so they are most probably missing values.
+
+```{r}
+data %>% ggplot(aes(x=diabetes)) + geom_bar()
+```
+
+For all fields other than pregnant and diabetes, lets set 0 to be NA
+
+```{r}
+d1 <- data %>% select(-pregnant,-diabetes) %>% 
+  map_dfr(~ifelse(.x==0,NA,.x))
+
+data_clean <- cbind(d1, data %>% select(pregnant, diabetes))
+
+data_clean %>% select_if(is.numeric) %>% 
+  gather(key='key', value = 'value') %>% 
+  ggplot(aes(x=value)) + geom_histogram(color='black', fill='cyan') +
+  facet_wrap(~key, scales = 'free')
+```
+
+## Modelling
+
+
