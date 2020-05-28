@@ -60,6 +60,14 @@ data_clean %>% select_if(is.numeric) %>%
   facet_wrap(~key, scales = 'free')
 ```
 
-## Modelling
+## Modelling with TidyModels
+
+Splitting the data into train and test sets
+
+```{r}
+set.seed(101)
+
+data_split <- initial_split(data_clean, prop=0.75)
+```
 
 
