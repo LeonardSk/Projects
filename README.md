@@ -7,3 +7,6 @@
     - ggplot for visualisations
     - Simple linear regression + nesting data and mapping
   - Click <a href="https://leonardsk.github.io/Projects/Building%20Permits/BuildingPermits_EDA.html">here</a> to view Markdown.
+  
+  ## A Playaround with TidyModels (with Pima Indians Diabetes data)
+    - Details of the data can be found <a href="http://math.furman.edu/~dcs/courses/math47/R/library/mlbench/html/PimaIndiansDiabetes.html">here</a>
