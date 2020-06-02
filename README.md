@@ -6,4 +6,4 @@
     - dplyr for slicing and dicing the data
     - ggplot for visualisations
     - Simple linear regression + nesting data and mapping
-  - Click <a href="https://leonardsk.github.io/Projects/BuildingPermits_EDA.html">here</a> to view Markdown.
+  - Click <a href="https://leonardsk.github.io/Projects/Building%20Permits/BuildingPermits_EDA.html">here</a> to view Markdown.
