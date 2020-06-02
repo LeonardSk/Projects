@@ -8,9 +8,9 @@
     - Simple linear regression + nesting data and mapping
   - Click <a href="https://leonardsk.github.io/Projects/Building%20Permits/BuildingPermits_EDA.html">here</a> to view Markdown.
   
-## A Playaround with TidyModels (with Pima Indians Diabetes data)
-   - Details of the data can be found <a href="http://math.furman.edu/~dcs/courses/math47/R/library/mlbench/html/PimaIndiansDiabetes.html">here</a>
+## A Playaround with TidyModels 
+   - Details of the underlying data can be found <a href="http://math.furman.edu/~dcs/courses/math47/R/library/mlbench/html/PimaIndiansDiabetes.html">here</a>
    - This is to explore the implementation of ML techniques using TidyModels
    - My personal go-to package in the past was Caret, but given the ease of integration of TidyModels into the Tidyverse (esp with pipe operators and purrr), it is certainly worth the transition. 
    - This is simply a quick and dirty play-around of TidyModel's key features and functionalities, stay tuned for more refined projects in the future.
-   - Click <a href="https://leonardsk.github.io/Projects/Tidy%20Models/Tidy_Models.html"here</a> to view Markdown.
+   - Click <a href="https://leonardsk.github.io/Projects/Tidy%20Models/Tidy_Models.html">here</a> to view Markdown.
